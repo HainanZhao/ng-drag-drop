@@ -1,11 +1,12 @@
-import { Component } from '@angular/core';
-import { DropEvent } from 'ng-drag-drop';
+import { Component, inject } from '@angular/core';
+import { interval, map, take, Subscription, tap, timer } from 'rxjs';
+import { NgDragDropService, DropEvent } from 'ng-drag-drop';
 
 @Component({
-    selector: 'delete-item',
-    templateUrl: './delete-item.component.html',
-    styles: [
-        `
+  selector: 'delete-item',
+  templateUrl: './delete-item.component.html',
+  styles: [
+    `
       div.scroll-list {
         overflow: auto;
         max-height: 70vh;
@@ -17,10 +18,12 @@ import { DropEvent } from 'ng-drag-drop';
         transform: scale(1.1);
       }
     `,
-    ],
-    standalone: false
+  ],
+  standalone: false
 })
 export class DeleteItemComponent {
+  ngDragDropService = inject(NgDragDropService);
+
   deleteItems = [
     { name: 'Angular2' },
     { name: 'AngularJS' },
@@ -28,6 +31,27 @@ export class DeleteItemComponent {
     { name: 'ReactJS' },
     { name: 'Backbone' },
   ];
+  deleteScope = '';
+  countdown?: number;
+
+  dragTimer?: Subscription;
+
+  constructor() {
+    this.ngDragDropService.onDragStart.subscribe(() => {
+      this.dragTimer = timer(0, 1000).pipe(take(6), map((v) => 5 - v), tap(v => this.countdown = v)).subscribe({
+        complete: () => {
+          this.deleteScope = 'delete';
+          this.dragTimer = undefined;
+          this.countdown = undefined;
+        }
+      });
+    });
+    this.ngDragDropService.onDragEnd.subscribe(() => {
+      this.deleteScope = '';
+      this.dragTimer?.unsubscribe();
+      this.countdown = undefined;
+    });
+  }
 
   onDeleteDrop(e: DropEvent) {
     this.removeItem(e.dragData, this.deleteItems);

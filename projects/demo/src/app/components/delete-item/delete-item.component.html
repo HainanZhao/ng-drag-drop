@@ -21,11 +21,12 @@
     <div class="col-sm-3">
 
       <div class="card card-inverse card-primary mb-3 text-center" droppable [dragHintClass]="'drag-hint-scale'" [dragOverClass]="'bg-danger'"
-        [dropScope]="'delete'" (onDrop)="onDeleteDrop($event)">
+        [dropScope]="deleteScope" (onDrop)="onDeleteDrop($event)">
         <div class="card-block">
           <blockquote class="card-blockquote">
             <h4 class="card-title"><i class="fa fa-trash" aria-hidden="true"></i> Drop to Delete</h4>
             <p class="card-text">Drop Items here to delete</p>
+            <p *ngIf="countdown !== undefined" class="card-text text-danger">Deletable in {{countdown}}</p>
           </blockquote>
         </div>
       </div>
