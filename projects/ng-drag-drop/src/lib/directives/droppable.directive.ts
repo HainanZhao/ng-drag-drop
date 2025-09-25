@@ -11,7 +11,7 @@ import {
   Renderer2,
 } from '@angular/core';
 import { DomHelper } from '../shared/dom-helper';
-import { Subscription, Observable, map, of } from 'rxjs';
+import { Subscription, Observable, map, of, BehaviorSubject } from 'rxjs';
 import { NgDragDropService } from '../ng-drag-drop.service';
 import { DropEvent } from '../shared/drop-event.model';
 
@@ -51,7 +51,13 @@ export class Droppable implements OnInit, OnDestroy {
   /**
    * Defines compatible drag drop pairs. Values must match both in draggable and droppable.dropScope.
    */
-  @Input() dropScope: string | Array<string> | Function = 'default';
+  get dropScope() {
+    return this._dropScope;
+  }
+  @Input() set dropScope(value: string | Array<string> | Function) {
+    this._dropScope = value;
+    this.checkAllowDrop();
+  }
 
   /**
    * Defines if drop is enabled. `true` by default.
@@ -64,6 +70,7 @@ export class Droppable implements OnInit, OnDestroy {
     } else {
       this.unsubscribeService();
     }
+    this.checkAllowDrop();
   }
 
   get dropEnabled() {
@@ -96,6 +103,12 @@ export class Droppable implements OnInit, OnDestroy {
 
   /**
    * @private
+   * Backing field for the dropScope property.
+   */
+  _dropScope: string | Array<string> | Function = 'default';
+
+  /**
+   * @private
    * Field for tracking if service is subscribed.
    * Avoids creating multiple subscriptions of service.
    */
@@ -118,6 +131,12 @@ export class Droppable implements OnInit, OnDestroy {
    * Function for unbinding the drag leave listener
    */
   unbindDragLeaveListener?: Function;
+
+  /**
+   * @private
+   * Function for unbinding the drag leave listener
+   */
+  allowDrop: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
 
   constructor(
     protected el: ElementRef,
@@ -159,7 +178,7 @@ export class Droppable implements OnInit, OnDestroy {
 
   @HostListener('drop', ['$event'])
   drop(e: any) {
-    this.allowDrop().subscribe((result) => {
+    this.allowDrop.subscribe((result) => {
       if (result && this._isDragActive) {
         DomHelper.removeClass(this.el, this.dragOverClass);
         e.preventDefault();
@@ -173,8 +192,8 @@ export class Droppable implements OnInit, OnDestroy {
     });
   }
 
-  allowDrop(): Observable<boolean> {
-    let allowed: boolean | Observable<boolean> = false;
+  checkAllowDrop(): void {
+    let allowed = false;
 
     /* tslint:disable:curly */
     /* tslint:disable:one-line */
@@ -193,15 +212,16 @@ export class Droppable implements OnInit, OnDestroy {
           }).length > 0;
     } else if (typeof this.dropScope === 'function') {
       allowed = this.dropScope(this.ng2DragDropService.dragData);
-      if (allowed instanceof Observable) {
-        return allowed.pipe(map((result) => result && this.dropEnabled));
-      }
+      // TODO: handle observable return value
+      // if (allowed instanceof Observable) {
+      //   return allowed.pipe(map((result) => result && this.dropEnabled));
+      // }
     }
 
     /* tslint:enable:curly */
     /* tslint:disable:one-line */
 
-    return of(allowed && this.dropEnabled);
+    this.allowDrop.next(allowed && this.dropEnabled);
   }
 
   subscribeService() {
@@ -212,7 +232,7 @@ export class Droppable implements OnInit, OnDestroy {
     this.dragStartSubscription = this.ng2DragDropService.onDragStart.subscribe(
       () => {
         this._isDragActive = true;
-        this.allowDrop().subscribe((result) => {
+        this.allowDrop.subscribe((result) => {
           if (result && this._isDragActive) {
             DomHelper.addClass(this.el, this.dragHintClass);
 
