@@ -1,3 +1,6 @@
+## 6.0.2 (2025-09-25)
+- Handle changes to `allowDrop` in `droppable` when `dropScope` changes while dragging
+
 ## 6.0.1 (2024-08-07)
 - Remove Angular version constraint for future versions
 
